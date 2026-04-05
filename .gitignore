@@ -1,0 +1,72 @@
+# Environment
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Model artifacts — committed directly (total <1MB, fine for GitHub)
+# If models grow large in future, migrate to DVC or a model registry
+!models/model_metadata.json
+!models/*.pkl
+!models/*.joblib
+
+# Data files (use DVC or object storage for large data)
+data/raw/*.csv
+data/raw/*.parquet
+data/processed/*.csv
+data/processed/*.parquet
+data/logs/*.log
+# But keep directory structure
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/logs/.gitkeep
+# Allow the LEMMA-RCA training dataset (800 rows, ~200KB)
+!data/raw/pipeline_failures.csv
+
+# External LEMMA raw downloads (large zip files, not needed in repo)
+data/external/
+
+# Claude Code internals
+CLAUDE.md
+COMMIT_PLAN.md
+.claude/
+
+# Notebooks (outputs can leak sensitive data)
+notebooks/.ipynb_checkpoints/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+*.xml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Airflow
+airflow/logs/
+airflow/airflow.db
+airflow.cfg
+webserver_config.py
