@@ -4,6 +4,8 @@
 
 When a pipeline fails, this system automatically classifies the root cause in real time, explains *why* using SHAP feature attributions, and displays a live monitoring dashboard — all triggered via an Airflow callback hook.
 
+**Status:** Active development — building out the ML pipeline, API, and dashboard from scratch.
+
 ---
 
 ## Demo
