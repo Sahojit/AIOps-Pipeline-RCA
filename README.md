@@ -6,6 +6,8 @@ When a pipeline fails, this system automatically classifies the root cause in re
 
 **Status:** Active development — building out the ML pipeline, API, and dashboard from scratch.
 
+**Dataset:** [LEMMA-RCA Cloud](https://huggingface.co/datasets/Lemma-RCA-NEC/Cloud_Computing_Preprocessed) — 800 real fault-injection events across 6 root cause classes.
+
 ---
 
 ## Demo
