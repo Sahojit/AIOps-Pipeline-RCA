@@ -2,6 +2,7 @@
 src/ingestion/log_parser.py
 ===========================
 Regex-based parser that extracts structured features from raw error logs.
+Handles multiline stack traces and normalises log levels across frameworks.
 
 WHY regex and not just TF-IDF?
 - TF-IDF captures word-level patterns but misses STRUCTURE:
