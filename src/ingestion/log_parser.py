@@ -17,11 +17,16 @@ so they can go directly into a feature matrix without encoding.
 """
 
 import re
-from typing import Any
+from typing import Any, Optional
 
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+def _safe_text(text: Optional[str]) -> str:
+    if not text or not text.strip():
+        return ""
+    return text.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +120,7 @@ def parse_error_log(error_log: str) -> dict[str, Any]:
     - keyword_score_dependency: int
     - keyword_score_missing_data: int
     """
+    error_log = _safe_text(error_log)
     log_lower = error_log.lower()
     log_words = set(log_lower.split())
 
