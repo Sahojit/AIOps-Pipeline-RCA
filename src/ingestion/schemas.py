@@ -20,6 +20,14 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 
 
+class LogLevel(str, Enum):
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
+
+
 class RootCause(str, Enum):
     """
     The six root cause classes our model must classify.
