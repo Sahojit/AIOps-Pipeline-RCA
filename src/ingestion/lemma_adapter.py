@@ -293,7 +293,8 @@ def _compose_error_log(
     else:
         header = f"FaultDetected: anomaly on pod {faulty_pod}."
 
-    # Pick real error messages
+    # Pick real error messages — guard against None entries in log list
+    real_logs = [m for m in real_logs if m and m.strip()]
     if real_logs:
         selected = random.sample(real_logs, min(3, len(real_logs)))
         body = " | ".join(msg[:150] for msg in selected)
