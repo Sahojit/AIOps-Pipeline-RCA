@@ -57,10 +57,15 @@ class LogFeatureExtractor:
         Returns:
             self
         """
+        error_logs = self._sanitize(error_logs)
         logger.info("Fitting LogFeatureExtractor on %d logs", len(error_logs))
         self._vectorizer.fit(error_logs)
         self._is_fitted = True
         return self
+
+    @staticmethod
+    def _sanitize(logs: list[str]) -> list[str]:
+        return [l if l and l.strip() else "" for l in logs]
 
     def transform(self, error_logs: list[str]) -> pd.DataFrame:
         """
