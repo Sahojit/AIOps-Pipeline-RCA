@@ -388,9 +388,9 @@ def _generate_events_from_scenario(
         events.append({
             "pipeline_name": rng.choice(PIPELINE_NAMES),
             "task_name": rng.choice(TASK_NAMES),
-            "runtime": runtime,
-            "retry_count": retry_count,
-            "rows_processed": rows_processed,
+            "runtime": runtime if runtime is not None else 0,
+            "retry_count": retry_count if retry_count is not None else 0,
+            "rows_processed": rows_processed if rows_processed is not None else 0,
             "schema_change": ground_truth.schema_change,
             "upstream_failed": ground_truth.upstream_failed,
             "error_log": _compose_error_log(
