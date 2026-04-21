@@ -117,3 +117,29 @@ class TestPredictionRequest:
             # timestamp omitted — should be None
         )
         assert req.timestamp is None
+
+    def test_empty_error_log_allowed(self) -> None:
+        req = PipelineFailurePredictionRequest(
+            pipeline_name="test_pipeline",
+            task_name="extract",
+            runtime=60,
+            retry_count=0,
+            rows_processed=0,
+            schema_change=False,
+            upstream_failed=False,
+            error_log="",
+        )
+        assert req.error_log == ""
+
+    def test_negative_runtime_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            PipelineFailurePredictionRequest(
+                pipeline_name="p",
+                task_name="t",
+                runtime=-1,
+                retry_count=0,
+                rows_processed=0,
+                schema_change=False,
+                upstream_failed=False,
+                error_log="err",
+            )
