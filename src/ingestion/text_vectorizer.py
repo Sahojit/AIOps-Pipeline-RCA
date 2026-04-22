@@ -127,7 +127,8 @@ class LogTextVectorizer:
         if not self._is_fitted:
             raise RuntimeError("Vectorizer not fitted. Call fit() first or load() a saved model.")
 
-        matrix = self._vectorizer.transform(error_logs)
+        preprocessed = [_preprocess_log(log) for log in error_logs]
+        matrix = self._vectorizer.transform(preprocessed)
         return matrix.toarray()
 
     def fit_transform(self, error_logs: list[str]) -> np.ndarray:
