@@ -106,7 +106,8 @@ class LogTextVectorizer:
             "Fitting TF-IDF vectorizer on %d logs (max_features=%d)",
             len(error_logs), self.max_features,
         )
-        self._vectorizer.fit(error_logs)
+        preprocessed = [_preprocess_log(log) for log in error_logs]
+        self._vectorizer.fit(preprocessed)
         self._is_fitted = True
         vocab_size = len(self._vectorizer.vocabulary_)
         logger.info("TF-IDF vocabulary size: %d terms", vocab_size)
