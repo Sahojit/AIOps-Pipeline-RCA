@@ -15,6 +15,9 @@ This adapter:
 1. Downloads preprocessed data from HuggingFace Hub
 2. Extracts real pod logs from zip archives
 3. Generates multiple training events per scenario using real log patterns
+
+Output columns match PipelineFailureEvent schema exactly so downstream
+feature engineering and model training need no further transformation.
 """
 
 import csv
