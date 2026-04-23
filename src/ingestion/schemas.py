@@ -86,8 +86,7 @@ class PipelineFailureEvent(BaseModel):
         description="Whether an upstream dependency pipeline has failed",
     )
     error_log: str = Field(
-        ...,
-        min_length=1,
+        default="",
         description="Raw error log text from the failed task",
     )
     root_cause: RootCause = Field(
