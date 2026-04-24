@@ -4,9 +4,11 @@ tests/unit/test_phase2_data.py
 Tests for Pydantic schemas used by the RCA system.
 """
 
+import pandas as pd
 import pytest
 from pydantic import ValidationError
 
+from src.ingestion.lemma_adapter import load_lemma_dataset
 from src.ingestion.schemas import (
     PipelineFailureEvent,
     PipelineFailurePredictionRequest,
@@ -143,3 +145,36 @@ class TestPredictionRequest:
                 upstream_failed=False,
                 error_log="err",
             )
+
+
+class TestIngestionIntegration:
+    """Integration tests: load CSV → parse → validate schema."""
+
+    def test_load_lemma_returns_dataframe(self) -> None:
+        df = load_lemma_dataset()
+        assert isinstance(df, pd.DataFrame)
+
+    def test_lemma_dataset_has_800_rows(self) -> None:
+        df = load_lemma_dataset()
+        assert len(df) == 800
+
+    def test_lemma_required_columns_present(self) -> None:
+        df = load_lemma_dataset()
+        required = {"pipeline_name", "task_name", "runtime", "error_log", "root_cause"}
+        assert required.issubset(set(df.columns)), f"Missing columns: {required - set(df.columns)}"
+
+    def test_lemma_root_cause_classes_match_enum(self) -> None:
+        df = load_lemma_dataset()
+        valid_values = {rc.value for rc in RootCause}
+        actual_values = set(df["root_cause"].unique())
+        unknown = actual_values - valid_values
+        assert not unknown, f"Unknown root cause values in dataset: {unknown}"
+
+    def test_lemma_no_null_pipeline_names(self) -> None:
+        df = load_lemma_dataset()
+        assert df["pipeline_name"].notna().all()
+        assert (df["pipeline_name"].str.strip() != "").all()
+
+    def test_lemma_runtime_non_negative(self) -> None:
+        df = load_lemma_dataset()
+        assert (df["runtime"] >= 0).all()
