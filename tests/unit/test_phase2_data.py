@@ -9,6 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.ingestion.lemma_adapter import load_lemma_dataset
+from src.ingestion.log_feature_extractor import LogFeatureExtractor
 from src.ingestion.schemas import (
     PipelineFailureEvent,
     PipelineFailurePredictionRequest,
@@ -178,3 +179,37 @@ class TestIngestionIntegration:
     def test_lemma_runtime_non_negative(self) -> None:
         df = load_lemma_dataset()
         assert (df["runtime"] >= 0).all()
+
+
+class TestIngestionSmoke:
+    """Smoke tests: CSV → LogFeatureExtractor → feature matrix."""
+
+    def test_fit_transform_returns_dataframe(self) -> None:
+        df = load_lemma_dataset()
+        logs = df["error_log"].fillna("").tolist()[:20]
+        extractor = LogFeatureExtractor(max_tfidf_features=10)
+        result = extractor.fit_transform(logs)
+        assert isinstance(result, pd.DataFrame)
+
+    def test_feature_matrix_row_count_matches_input(self) -> None:
+        df = load_lemma_dataset()
+        logs = df["error_log"].fillna("").tolist()[:20]
+        extractor = LogFeatureExtractor(max_tfidf_features=10)
+        result = extractor.fit_transform(logs)
+        assert len(result) == 20
+
+    def test_feature_names_include_regex_and_tfidf(self) -> None:
+        df = load_lemma_dataset()
+        logs = df["error_log"].fillna("").tolist()[:20]
+        extractor = LogFeatureExtractor(max_tfidf_features=10)
+        extractor.fit(logs)
+        names = extractor.get_feature_names()
+        assert any(n.startswith("tfidf_") for n in names)
+        assert "log_length" in names
+
+    def test_no_nan_values_in_feature_matrix(self) -> None:
+        df = load_lemma_dataset()
+        logs = df["error_log"].fillna("").tolist()[:20]
+        extractor = LogFeatureExtractor(max_tfidf_features=10)
+        result = extractor.fit_transform(logs)
+        assert not result.isnull().any().any(), "Feature matrix contains NaN values"

@@ -407,6 +407,33 @@ def _generate_events_from_scenario(
 
 
 # =============================================================================
+# CSV reader — loads the pre-processed pipeline_failures.csv from disk
+# =============================================================================
+
+def load_lemma_dataset(path: Optional[Path] = None) -> pd.DataFrame:
+    """
+    Load the preprocessed LEMMA-RCA dataset from the local CSV file.
+
+    Args:
+        path: Custom CSV path. Defaults to data/raw/pipeline_failures.csv.
+
+    Returns:
+        DataFrame with the standard 10-column schema.
+    """
+    from src.config.settings import settings
+
+    csv_path = path or (settings.raw_data_dir / "pipeline_failures.csv")
+    if not csv_path.exists():
+        raise FileNotFoundError(
+            f"Dataset not found at {csv_path}. "
+            "Run `python -m src.ingestion.load_lemma_dataset` first."
+        )
+    df = pd.read_csv(csv_path)
+    logger.info("Loaded LEMMA-RCA dataset from %s (%d rows)", csv_path, len(df))
+    return df
+
+
+# =============================================================================
 # Main entry point
 # =============================================================================
 
