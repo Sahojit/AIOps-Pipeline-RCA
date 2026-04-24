@@ -81,6 +81,8 @@ class LogFeatureExtractor:
         if not self._is_fitted:
             raise RuntimeError("LogFeatureExtractor not fitted. Call fit() first.")
 
+        error_logs = self._sanitize(error_logs)
+
         # 1. Regex features → list of dicts → DataFrame
         regex_features = parse_error_logs_batch(error_logs)
         regex_df = pd.DataFrame(regex_features)

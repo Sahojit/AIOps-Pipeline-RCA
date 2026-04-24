@@ -174,6 +174,8 @@ def parse_error_log(error_log: str) -> dict[str, Any]:
     # --- Text Statistics ---
     features["log_length"] = len(error_log)
     features["word_count"] = len(error_log.split())
+    # splitlines() avoids the off-by-one from trailing '\n' that split('\n') produces
+    features["log_line_count"] = len(error_log.splitlines()) if error_log else 0
 
     # --- Domain Keyword Scores ---
     # Count how many keywords from each domain appear in the log.
