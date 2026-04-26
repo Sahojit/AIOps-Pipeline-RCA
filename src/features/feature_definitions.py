@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 # Canonical list of feature groups and their sizes.
 # Used by build_features.py to validate the final matrix shape.
 FEATURE_GROUPS: dict[str, int] = {
-    "execution": 10,
+    "execution": 12,
     "schema": 5,
     "temporal": 10,
     "log_signals": 33,
@@ -79,6 +79,15 @@ def build_execution_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # Binary: many retries? (>2 implies transient/external issue)
     features["feat_high_retries"] = (df["retry_count"] > 2).astype(int)
+
+    # Retry intensity: retries per 100 seconds of runtime.
+    # A job that retries 5 times in 10s is very different from 5 retries in 3600s.
+    features["feat_retry_rate"] = df["retry_count"].astype(float) / (runtime_safe / 100.0)
+
+    # Rows per retry attempt — efficiency before each failure.
+    # High value = processed a lot before needing to retry → transient issue.
+    retry_safe = df["retry_count"].replace(0, 1).astype(float)
+    features["feat_rows_per_retry"] = df["rows_processed"].astype(float) / retry_safe
 
     logger.debug("Execution features shape: %s", features.shape)
     return features
