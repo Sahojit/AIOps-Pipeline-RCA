@@ -176,5 +176,14 @@ def build_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
     # Day of month — end-of-month billing/aggregation pipelines fail differently
     features["feat_day_of_month"] = ts.dt.day
 
+    # Night hours (22:00–06:00): batch/ETL jobs typically run overnight;
+    # failures during this window skew toward Resource Exhaustion.
+    features["feat_is_night"] = (
+        (ts.dt.hour < 6) | (ts.dt.hour >= 22)
+    ).astype(int)
+
+    # Month number — end-of-quarter (3, 6, 9, 12) sees extra pipeline load
+    features["feat_month"] = ts.dt.month
+
     logger.debug("Temporal features shape: %s", features.shape)
     return features
