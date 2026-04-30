@@ -16,6 +16,7 @@ WHY separate feature groups?
 import numpy as np
 import pandas as pd
 
+from src.ingestion.log_parser import parse_error_logs_batch
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -186,4 +187,29 @@ def build_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
     features["feat_month"] = ts.dt.month
 
     logger.debug("Temporal features shape: %s", features.shape)
+    return features
+
+
+def build_log_signal_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Extract structured features from raw error log text using regex patterns.
+
+    Wraps parse_error_logs_batch() so the log signals fit the same
+    feature-group interface as execution/schema/temporal builders.
+
+    Returns columns like: has_http_error, keyword_score_api,
+    log_length, log_line_count, etc. — one row per input event.
+
+    Input columns required: error_log
+    """
+    logger.info("Building log signal features for %d rows", len(df))
+
+    error_logs = df["error_log"].fillna("").tolist()
+    parsed = parse_error_logs_batch(error_logs)
+    features = pd.DataFrame(parsed, index=df.index)
+
+    # Prefix all columns to avoid name collisions with other feature groups
+    features = features.add_prefix("log_")
+
+    logger.debug("Log signal features shape: %s", features.shape)
     return features
