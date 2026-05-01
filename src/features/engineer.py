@@ -195,6 +195,12 @@ class FeatureEngineer:
             axis=1,
         )
 
+        # Guard against duplicate column names from feature group collisions
+        dupes = all_features.columns[all_features.columns.duplicated()].tolist()
+        if dupes:
+            logger.warning("Duplicate feature columns detected — dropping: %s", dupes)
+            all_features = all_features.loc[:, ~all_features.columns.duplicated()]
+
         logger.debug(
             "Feature groups: exec=%d, schema=%d, temporal=%d, log=%d → total=%d",
             len(exec_features.columns),
@@ -256,7 +262,6 @@ class FeatureEngineer:
         instance._is_fitted = True
 
         # Rebuild feature names from a dummy transform
-        import numpy as np
         dummy_df = pd.DataFrame([{
             "pipeline_name": "dummy",
             "task_name": "dummy",

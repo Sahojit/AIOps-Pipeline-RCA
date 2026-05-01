@@ -208,8 +208,10 @@ def build_log_signal_features(df: pd.DataFrame) -> pd.DataFrame:
     parsed = parse_error_logs_batch(error_logs)
     features = pd.DataFrame(parsed, index=df.index)
 
-    # Prefix all columns to avoid name collisions with other feature groups
-    features = features.add_prefix("log_")
+    # Do NOT add a generic "log_" prefix — parse_error_logs_batch columns
+    # like "log_length" and "log_line_count" already carry "log_" where
+    # appropriate. A blanket add_prefix("log_") produces doubles like
+    # "log_log_length" which collide with downstream expectations.
 
     logger.debug("Log signal features shape: %s", features.shape)
     return features
