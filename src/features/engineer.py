@@ -185,6 +185,9 @@ class FeatureEngineer:
 
         # 4. Log features from Phase 3 (regex + TF-IDF)
         log_features = self._log_extractor.transform(df["error_log"].tolist())
+        tfidf_count = len([c for c in log_features.columns if c.startswith("tfidf_")])
+        regex_count = len(log_features.columns) - tfidf_count
+        logger.debug("Log features: %d regex + %d tfidf", regex_count, tfidf_count)
 
         # Concatenate all feature groups
         all_features = pd.concat(
@@ -213,6 +216,13 @@ class FeatureEngineer:
     def feature_count(self) -> int:
         """Number of features produced by this engineer."""
         return len(self._feature_names) if self._is_fitted else 0
+
+    @property
+    def tfidf_feature_names(self) -> list[str]:
+        """Get just the TF-IDF feature names (for SHAP grouping)."""
+        if not self._is_fitted:
+            raise RuntimeError("Not fitted.")
+        return [n for n in self._feature_names if n.startswith("tfidf_")]
 
     def __repr__(self) -> str:
         status = f"fitted, {self.feature_count} features" if self._is_fitted else "not fitted"
