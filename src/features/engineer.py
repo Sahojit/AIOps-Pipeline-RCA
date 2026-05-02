@@ -164,6 +164,26 @@ class FeatureEngineer:
         df = pd.DataFrame([event])
         return self.transform(df)
 
+    def _feature_groups(self, df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+        """
+        Build each feature group independently and return as a named dict.
+
+        Separating group construction from concatenation makes each step
+        independently testable and keeps _build_all_features readable.
+        """
+        log_features = self._log_extractor.transform(df["error_log"].tolist())
+        tfidf_count = len([c for c in log_features.columns if c.startswith("tfidf_")])
+        logger.debug(
+            "Log features: %d regex + %d tfidf",
+            len(log_features.columns) - tfidf_count, tfidf_count,
+        )
+        return {
+            "execution": build_execution_features(df),
+            "schema": build_schema_features(df),
+            "temporal": build_temporal_features(df),
+            "log": log_features,
+        }
+
     def _build_all_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Internal: build all feature groups and concatenate.
@@ -171,29 +191,10 @@ class FeatureEngineer:
         Order matters: features are concatenated in this exact order,
         and the model expects this order at inference time.
         """
-        # Reset index to ensure all feature groups align
         df = df.reset_index(drop=True)
+        groups = self._feature_groups(df)
 
-        # 1. Execution features (runtime, retries, rows + derived)
-        exec_features = build_execution_features(df)
-
-        # 2. Schema features (schema_change, upstream_failed + interactions)
-        schema_features = build_schema_features(df)
-
-        # 3. Temporal features (hour, day, cyclical encodings)
-        temporal_features = build_temporal_features(df)
-
-        # 4. Log features from Phase 3 (regex + TF-IDF)
-        log_features = self._log_extractor.transform(df["error_log"].tolist())
-        tfidf_count = len([c for c in log_features.columns if c.startswith("tfidf_")])
-        regex_count = len(log_features.columns) - tfidf_count
-        logger.debug("Log features: %d regex + %d tfidf", regex_count, tfidf_count)
-
-        # Concatenate all feature groups
-        all_features = pd.concat(
-            [exec_features, schema_features, temporal_features, log_features],
-            axis=1,
-        )
+        all_features = pd.concat(list(groups.values()), axis=1)
 
         # Guard against duplicate column names from feature group collisions
         dupes = all_features.columns[all_features.columns.duplicated()].tolist()
@@ -202,11 +203,8 @@ class FeatureEngineer:
             all_features = all_features.loc[:, ~all_features.columns.duplicated()]
 
         logger.debug(
-            "Feature groups: exec=%d, schema=%d, temporal=%d, log=%d → total=%d",
-            len(exec_features.columns),
-            len(schema_features.columns),
-            len(temporal_features.columns),
-            len(log_features.columns),
+            "Feature groups: %s → total=%d",
+            {k: len(v.columns) for k, v in groups.items()},
             len(all_features.columns),
         )
         return all_features
