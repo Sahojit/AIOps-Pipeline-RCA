@@ -82,13 +82,22 @@ def main() -> None:
     groups_path.write_text(json.dumps(group_counts, indent=2))
     logger.info("Feature group counts saved to %s", groups_path)
 
-    # Validate feature count if requested
+    # Validate feature matrix shape
+    expected_rows = len(df)
+    if X.shape[0] != expected_rows:
+        logger.error(
+            "Row count mismatch: expected %d, got %d", expected_rows, X.shape[0]
+        )
+        sys.exit(1)
+
     if args.validate:
         n_features = X.shape[1]
         if not (90 <= n_features <= 110):
             logger.error("Feature count %d outside expected range [90, 110]", n_features)
             sys.exit(1)
         logger.info("Feature count validation passed: %d features", n_features)
+
+    logger.info("Feature matrix shape: (%d, %d)", X.shape[0], X.shape[1])
 
     # Save TF-IDF vectorizer for inference
     engineer.save()
