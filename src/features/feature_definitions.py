@@ -151,11 +151,12 @@ def build_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
     # Parse timestamp if it's a string
     ts = pd.to_datetime(df["timestamp"], utc=True)
 
-    # Hour of day (0-23)
-    features["feat_hour"] = ts.dt.hour
+    # Hour of day (0-23) — explicit int cast: dt.hour returns Int64 (nullable)
+    # which breaks downstream XGBoost dtype checks expecting plain int64.
+    features["feat_hour"] = ts.dt.hour.astype(int)
 
     # Day of week (0=Monday, 6=Sunday)
-    features["feat_day_of_week"] = ts.dt.dayofweek
+    features["feat_day_of_week"] = ts.dt.dayofweek.astype(int)
 
     # Is it a weekend? (different failure patterns)
     features["feat_is_weekend"] = (ts.dt.dayofweek >= 5).astype(int)
