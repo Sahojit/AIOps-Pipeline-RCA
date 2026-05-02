@@ -282,3 +282,69 @@ class TestFeatureEngineer:
         engineer = FeatureEngineer()
         with pytest.raises(ValueError, match="Label column"):
             engineer.fit_transform(df)
+
+
+# =========================================================================
+# Edge Case Tests
+# =========================================================================
+
+def _minimal_df(**overrides) -> pd.DataFrame:
+    """Build a minimal single-row DataFrame for edge case tests."""
+    row = {
+        "pipeline_name": "test_pipeline",
+        "task_name": "test_task",
+        "runtime": 60,
+        "retry_count": 1,
+        "rows_processed": 1000,
+        "schema_change": False,
+        "upstream_failed": False,
+        "error_log": "ConnectionError: upstream service timed out",
+        "timestamp": "2026-03-01T10:00:00+00:00",
+        "root_cause": "API Failure",
+    }
+    row.update(overrides)
+    return pd.DataFrame([row])
+
+
+class TestEdgeCases:
+    def test_empty_error_log_does_not_crash(self) -> None:
+        df = _minimal_df(error_log="")
+        engineer = FeatureEngineer(max_tfidf_features=10)
+        # Fit on a real sample so TF-IDF has a vocabulary
+        train_df = _lemma_sample(50)
+        engineer.fit(train_df)
+        result = engineer.transform(df)
+        assert len(result) == 1
+        assert not result.isnull().any().any()
+
+    def test_zero_runtime_event(self) -> None:
+        df = _minimal_df(runtime=0, rows_processed=0)
+        engineer = FeatureEngineer(max_tfidf_features=10)
+        train_df = _lemma_sample(50)
+        engineer.fit(train_df)
+        result = engineer.transform(df)
+        assert np.isfinite(result.select_dtypes(include=[np.number]).values).all()
+
+    def test_max_retry_count(self) -> None:
+        df = _minimal_df(retry_count=10)
+        engineer = FeatureEngineer(max_tfidf_features=10)
+        train_df = _lemma_sample(50)
+        engineer.fit(train_df)
+        result = engineer.transform(df)
+        assert result["feat_high_retries"].iloc[0] == 1
+
+    def test_single_row_transform_matches_batch(self) -> None:
+        train_df = _lemma_sample(50)
+        engineer = FeatureEngineer(max_tfidf_features=10)
+        engineer.fit(train_df)
+
+        # Transform a batch of 1 vs transform_single — must produce same result
+        single_row = train_df.iloc[[0]]
+        event_dict = single_row.drop(columns=["root_cause"]).iloc[0].to_dict()
+
+        batch_result = engineer.transform(single_row)
+        single_result = engineer.transform_single(event_dict)
+        pd.testing.assert_frame_equal(
+            batch_result.reset_index(drop=True),
+            single_result.reset_index(drop=True),
+        )
