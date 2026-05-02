@@ -25,6 +25,14 @@ logger = get_logger(__name__)
 
 
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Build feature matrix from raw pipeline failures CSV")
+    parser.add_argument(
+        "--validate", action="store_true",
+        help="Fail if feature count deviates from expected range (90–110)",
+    )
+    args = parser.parse_args()
+
     configure_root_logger(settings.log_level)
 
     # --- Load raw data ---
@@ -73,6 +81,14 @@ def main() -> None:
     groups_path = output_dir / "feature_groups.json"
     groups_path.write_text(json.dumps(group_counts, indent=2))
     logger.info("Feature group counts saved to %s", groups_path)
+
+    # Validate feature count if requested
+    if args.validate:
+        n_features = X.shape[1]
+        if not (90 <= n_features <= 110):
+            logger.error("Feature count %d outside expected range [90, 110]", n_features)
+            sys.exit(1)
+        logger.info("Feature count validation passed: %d features", n_features)
 
     # Save TF-IDF vectorizer for inference
     engineer.save()
