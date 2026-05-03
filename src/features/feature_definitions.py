@@ -216,3 +216,27 @@ def build_log_signal_features(df: pd.DataFrame) -> pd.DataFrame:
 
     logger.debug("Log signal features shape: %s", features.shape)
     return features
+
+
+def low_variance_features(df: pd.DataFrame, threshold: float = 0.01) -> list[str]:
+    """
+    Return names of numeric features whose variance is below `threshold`.
+
+    Used as a baseline feature selection check before training. Features
+    with near-zero variance carry no signal and can slow down tree splits.
+
+    Args:
+        df: Feature DataFrame (output of FeatureEngineer.fit_transform).
+        threshold: Variance below this value → flagged as low-signal.
+
+    Returns:
+        List of column names to consider dropping.
+    """
+    variances = df.var(numeric_only=True)
+    flagged = variances[variances < threshold].index.tolist()
+    if flagged:
+        logger.info(
+            "Low-variance features (< %.3f): %d found — %s",
+            threshold, len(flagged), flagged,
+        )
+    return flagged
