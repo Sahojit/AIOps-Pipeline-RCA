@@ -164,6 +164,33 @@ class FeatureEngineer:
         df = pd.DataFrame([event])
         return self.transform(df)
 
+    def _build_lag_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Compute time-since-last-failure and burst flag per pipeline.
+
+        Groups by pipeline_name, sorts by timestamp within each group, then
+        computes the seconds elapsed since the previous failure.
+
+        NaN fix: pipelines with only one event produce NaN from diff() —
+        fill with 0 (no known prior failure = treat as fresh start).
+        """
+        features = pd.DataFrame(index=df.index)
+        ts = pd.to_datetime(df["timestamp"], utc=True)
+
+        lag_seconds = (
+            df.assign(_ts=ts)
+            .groupby("pipeline_name")["_ts"]
+            .transform(lambda g: g.sort_values().diff().dt.total_seconds())
+        )
+
+        # fillna(0): first event per pipeline has no prior event
+        features["feat_lag_seconds"] = lag_seconds.fillna(0)
+        # Burst flag: another failure within 5 min = likely cascading issue
+        features["feat_is_burst"] = (lag_seconds < 300).fillna(0).astype(int)
+
+        logger.debug("Lag features shape: %s", features.shape)
+        return features
+
     def _feature_groups(self, df: pd.DataFrame) -> dict[str, pd.DataFrame]:
         """
         Build each feature group independently and return as a named dict.
@@ -181,6 +208,7 @@ class FeatureEngineer:
             "execution": build_execution_features(df),
             "schema": build_schema_features(df),
             "temporal": build_temporal_features(df),
+            "lag": self._build_lag_features(df),
             "log": log_features,
         }
 
