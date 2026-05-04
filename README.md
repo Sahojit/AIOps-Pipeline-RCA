@@ -317,12 +317,18 @@ When a task fails, Airflow immediately calls `POST /predict-rca` with the task c
 
 ## Feature Engineering (96 Features)
 
-| Group | Count | Examples |
-|-------|-------|---------|
-| Execution features | 5 | `runtime`, `retry_count`, `rows_processed`, `schema_change`, `upstream_failed` |
-| Temporal features | 8 | `hour_of_day`, `day_of_week`, `is_weekend`, `is_business_hours` |
-| Log signal features | 33 | `has_oom`, `has_timeout`, `has_connection_error`, `error_count`, `stack_depth` |
-| TF-IDF log features | 50 | Top 50 tokens from error log corpus |
+Features are built by `src/features/engineer.py` via five independent feature groups, then concatenated into a single matrix. Each group is unit-tested independently.
+
+| Group | Count | What it captures |
+|-------|-------|-----------------|
+| **Execution** | 12 | `runtime`, `retry_count`, `rows_processed` + derived: `log_rows`, `rows_per_second`, `retry_rate`, `zero_rows` flag, `short/long_runtime` flags |
+| **Schema** | 5 | `schema_change`, `upstream_failed` + 3 interaction terms (both, schema-only, upstream-only) |
+| **Temporal** | 12 | `hour`, `day_of_week`, `is_weekend`, `is_business_hours`, `is_night`, `month`, cyclical sin/cos encodings |
+| **Lag** | 2 | `lag_seconds` (time since last failure on same pipeline), `is_burst` flag (<5 min gap) |
+| **Log signals** | 23 | HTTP status codes, memory values, timeout values, error type hash, keyword scores per root-cause domain |
+| **TF-IDF** | 50 | Top 50 tokens from error log corpus (unigrams + bigrams, after preprocessing) |
+
+The TF-IDF vectorizer vocabulary is fitted on the training set and saved as `models/tfidf_vectorizer.pkl`. At inference time the same vocabulary is loaded to guarantee feature alignment.
 
 ---
 
