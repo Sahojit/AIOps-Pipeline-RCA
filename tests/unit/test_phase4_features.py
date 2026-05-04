@@ -14,6 +14,7 @@ from src.features.feature_definitions import (
     build_execution_features,
     build_schema_features,
     build_temporal_features,
+    low_variance_features,
 )
 from src.features.engineer import FeatureEngineer
 
@@ -348,3 +349,45 @@ class TestEdgeCases:
             batch_result.reset_index(drop=True),
             single_result.reset_index(drop=True),
         )
+
+
+# =========================================================================
+# Full Dataset Integration Tests
+# =========================================================================
+
+class TestFullDatasetIntegration:
+    """Run feature engineering over all 800 LEMMA rows."""
+
+    def test_full_dataset_row_count(self) -> None:
+        df = pd.read_csv(_LEMMA_CSV)
+        engineer = FeatureEngineer(max_tfidf_features=50)
+        X, y, _ = engineer.fit_transform(df)
+        assert X.shape[0] == len(df)
+        assert len(y) == len(df)
+
+    def test_full_dataset_min_feature_count(self) -> None:
+        df = pd.read_csv(_LEMMA_CSV)
+        engineer = FeatureEngineer(max_tfidf_features=50)
+        X, _, feature_names = engineer.fit_transform(df)
+        assert X.shape[1] >= 90, f"Expected >=90 features, got {X.shape[1]}"
+        assert len(feature_names) == X.shape[1]
+
+    def test_all_six_root_cause_classes_present(self) -> None:
+        df = pd.read_csv(_LEMMA_CSV)
+        engineer = FeatureEngineer(max_tfidf_features=50)
+        _, y, _ = engineer.fit_transform(df)
+        assert y.nunique() == 6, f"Expected 6 classes, got: {y.unique()}"
+
+    def test_no_constant_features_in_full_dataset(self) -> None:
+        df = pd.read_csv(_LEMMA_CSV)
+        engineer = FeatureEngineer(max_tfidf_features=50)
+        X, _, _ = engineer.fit_transform(df)
+        zero_var = low_variance_features(X, threshold=0.0)
+        assert len(zero_var) == 0, f"Constant (zero-variance) features: {zero_var}"
+
+    def test_no_nans_in_full_dataset(self) -> None:
+        df = pd.read_csv(_LEMMA_CSV)
+        engineer = FeatureEngineer(max_tfidf_features=50)
+        X, _, _ = engineer.fit_transform(df)
+        nan_cols = X.columns[X.isnull().any()].tolist()
+        assert not nan_cols, f"NaN found in columns: {nan_cols}"
