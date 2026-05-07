@@ -163,3 +163,20 @@ class RCAModelTrainer:
     @property
     def label_encoder(self) -> LabelEncoder:
         return self._label_encoder
+
+    @property
+    def class_names(self) -> list[str]:
+        """Ordered class names matching the integer encoding."""
+        return list(self._label_encoder.classes_)
+
+    def decode_predictions(self, y_encoded: np.ndarray) -> list[str]:
+        """
+        Convert integer-encoded predictions back to root cause strings.
+
+        Args:
+            y_encoded: Integer array from model.predict().
+
+        Returns:
+            List of human-readable root cause labels.
+        """
+        return list(self._label_encoder.inverse_transform(y_encoded))
