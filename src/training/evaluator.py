@@ -133,6 +133,35 @@ def evaluate_model(
     }
 
 
+def confusion_matrix_report(metrics: dict[str, Any], class_names: list[str]) -> str:
+    """
+    Format the confusion matrix as a readable text table.
+
+    Rows = actual class, Columns = predicted class.
+    Off-diagonal entries show WHERE the model is confused.
+    """
+    cm_df = metrics["confusion_matrix_df"]
+    lines = [
+        "",
+        "Confusion Matrix (rows=actual, cols=predicted):",
+        "-" * 60,
+        cm_df.to_string(),
+        "",
+    ]
+
+    # Highlight the most common misclassification
+    cm = metrics["confusion_matrix"]
+    cm_array = np.array(cm)
+    np.fill_diagonal(cm_array, 0)
+    if cm_array.max() > 0:
+        row, col = np.unravel_index(cm_array.argmax(), cm_array.shape)
+        lines.append(
+            f"Most common error: '{class_names[row]}' predicted as "
+            f"'{class_names[col]}' ({cm_array[row, col]} times)"
+        )
+    return "\n".join(lines)
+
+
 def format_evaluation_summary(metrics: dict[str, Any], class_names: list[str]) -> str:
     """
     Format evaluation results into a human-readable summary string.
