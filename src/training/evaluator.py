@@ -200,3 +200,30 @@ def format_evaluation_summary(metrics: dict[str, Any], class_names: list[str]) -
 
     lines.append("=" * 60)
     return "\n".join(lines)
+
+
+def check_go_no_go(metrics: dict[str, Any], min_macro_f1: float = 0.70) -> None:
+    """
+    Go/No-Go gate: raise if macro F1 is below the minimum threshold.
+
+    This is the single quality gate before saving model artifacts.
+    If the model doesn't meet the bar, we refuse to overwrite the
+    production artifact — better to keep the old model than deploy a bad one.
+
+    Args:
+        metrics: Output of evaluate_model().
+        min_macro_f1: Minimum acceptable macro F1 score. Default 0.70.
+
+    Raises:
+        ValueError: If macro F1 < min_macro_f1.
+    """
+    macro_f1 = metrics["macro_f1"]
+    if macro_f1 < min_macro_f1:
+        raise ValueError(
+            f"Go/No-Go FAILED: macro F1 {macro_f1:.4f} < threshold {min_macro_f1:.2f}. "
+            "Model artifacts NOT saved. Fix class coverage or review training data."
+        )
+    logger.info(
+        "Go/No-Go PASSED: macro F1 %.4f >= threshold %.2f",
+        macro_f1, min_macro_f1,
+    )
