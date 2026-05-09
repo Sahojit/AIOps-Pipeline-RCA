@@ -83,16 +83,23 @@ class RCAExplainer:
             - base_value: Prior probability for this class
             - feature_contributions: All features with their SHAP values
         """
-        # Get SHAP values — returns list of arrays, one per class
-        shap_values = self._explainer.shap_values(X)
+        # Get SHAP values — return type differs by shap version:
+        #   shap <0.50  → list of (n_samples, n_features) arrays, one per class
+        #   shap 0.50+  → shap.Explanation object with .values (n_samples, n_features, n_classes)
+        # The base_score fix in 0.50 also changed how expected_value is stored.
+        shap_output = self._explainer.shap_values(X)
 
-        # For multi-class, shap_values is a list of (n_samples, n_features)
-        # Index into the predicted class
-        if isinstance(shap_values, list):
-            class_shap = shap_values[predicted_class_idx]
+        if isinstance(shap_output, shap.Explanation):
+            # shap 0.50+: extract raw array from Explanation object
+            arr = shap_output.values
+            if arr.ndim == 3:
+                class_shap = arr[:, :, predicted_class_idx]
+            else:
+                class_shap = arr
+        elif isinstance(shap_output, list):
+            class_shap = shap_output[predicted_class_idx]
         else:
-            # Some SHAP versions return (n_samples, n_features, n_classes)
-            class_shap = shap_values[:, :, predicted_class_idx]
+            class_shap = shap_output[:, :, predicted_class_idx]
 
         # If single sample, squeeze to 1D
         if class_shap.ndim > 1:
