@@ -20,12 +20,15 @@ Artifact structure:
 """
 
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import joblib
 import numpy as np
+import sklearn
+import xgboost
 from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
 
@@ -105,6 +108,11 @@ def save_model_artifacts(
             },
         },
         "confusion_matrix": metrics["confusion_matrix"],
+        "library_versions": {
+            "xgboost": xgboost.__version__,
+            "scikit_learn": sklearn.__version__,
+            "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        },
     }
 
     metadata_path = settings.model_metadata_path
