@@ -67,15 +67,17 @@ def save_model_artifacts(
     paths: dict[str, Path] = {}
 
     # --- 1. Save model binary ---
+    # protocol=4 avoids pickle protocol mismatch errors when the artifact
+    # is saved on Python 3.11 and loaded on 3.10 (or vice versa).
     model_filename = f"rca_model_{version}.pkl"
     model_path = model_dir / model_filename
-    joblib.dump(model, model_path)
+    joblib.dump(model, model_path, protocol=4)
     paths["model"] = model_path
     logger.info("Model saved to %s", model_path)
 
     # --- 2. Save label encoder ---
     encoder_path = model_dir / "label_encoder.pkl"
-    joblib.dump(label_encoder, encoder_path)
+    joblib.dump(label_encoder, encoder_path, protocol=4)
     paths["label_encoder"] = encoder_path
     logger.info("Label encoder saved to %s", encoder_path)
 
