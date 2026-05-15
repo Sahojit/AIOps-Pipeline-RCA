@@ -92,6 +92,56 @@ models/          →  rca_model_v1.pkl  label_encoder.pkl  model_metadata.json
 
 ---
 
+## Model Card
+
+### Classes and Per-Class Performance
+
+| Root Cause Class | Precision | Recall | F1 | Support |
+|-----------------|-----------|--------|----|---------|
+| API Failure | 1.000 | 0.938 | 0.968 | 16 |
+| Data Quality Issue | 1.000 | 1.000 | 1.000 | 23 |
+| Dependency Failure | 1.000 | 1.000 | 1.000 | 21 |
+| Missing Data | 1.000 | 1.000 | 1.000 | 20 |
+| Resource Exhaustion | 0.985 | 1.000 | 0.992 | 64 |
+| Schema Change | 1.000 | 1.000 | 1.000 | 16 |
+
+> Evaluated on a held-out 20% test split (160 samples). `API Failure` recall of 0.938 reflects one misclassified sample — the model predicted `Resource Exhaustion` for a CPU-throttled API pod, which is arguable.
+
+### Feature Groups
+
+| Group | Count | Description |
+|-------|-------|-------------|
+| Execution | 12 | Duration, retries, row counts, error rate, retry rate |
+| Schema | 5 | Column count, null fraction, schema version |
+| Temporal | 12 | Hour, day-of-week, is_weekend, is_night, month, lag features |
+| Log signals | 23 | Regex-extracted counts: OOM, timeout, connection error, etc. |
+| TF-IDF | 50 | Unigram/bigram log message tokens (fitted on training set) |
+| **Total** | **96** | |
+
+### Training Configuration
+
+```
+Algorithm:    XGBoost  multi:softprob
+n_estimators: 300
+max_depth:    6
+learning_rate: 0.1
+subsample:    0.8
+colsample_bytree: 0.8
+eval_metric:  mlogloss
+early_stopping_rounds: 20
+```
+
+### Artifact Files
+
+| File | Purpose |
+|------|---------|
+| `models/rca_model_v1.pkl` | Trained XGBClassifier (~800KB) |
+| `models/label_encoder.pkl` | LabelEncoder for 6 classes |
+| `models/tfidf_vectorizer.pkl` | TF-IDF vocab (50 features, training-fitted) |
+| `models/model_metadata.json` | Version, metrics, hyperparams, library versions |
+
+---
+
 ## Dataset
 
 Built on the **[LEMMA-RCA](https://huggingface.co/datasets/Lemma-RCA-NEC/Cloud_Computing_Preprocessed)** dataset — real fault injection scenarios from a microservices deployment on AWS EKS (BookInfo + 3-tier-web apps). Six fault scenarios were used, extracting structured pod logs from zip archives and generating training events with varied numeric features.
