@@ -93,7 +93,7 @@ app = FastAPI(
 # Global exception handler — never leak stack traces to clients
 # ---------------------------------------------------------------------------
 @app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:  # noqa: BLE001
     """Catch-all handler so clients always get structured JSON errors."""
     logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
     return JSONResponse(
@@ -120,3 +120,23 @@ def _get_engine(request: Request) -> RCAInferenceEngine:
             detail="Model not loaded. Train the model first: python -m src.training.train_model",
         )
     return engine
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/health")
+async def health_check(request: Request) -> dict:
+    """
+    Health check endpoint — used by load balancers, Kubernetes probes, monitoring.
+
+    Returns 200 if the model is loaded, 503 if not.
+    """
+    engine = getattr(request.app.state, "engine", None)
+    if engine is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Model not loaded",
+        )
+    return engine.health_check()
