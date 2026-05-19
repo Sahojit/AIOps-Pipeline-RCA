@@ -21,9 +21,12 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 
+from database.crud import create_pipeline_failure, create_rca_prediction
+from database.session import get_db
 from src.config.settings import settings
 from src.inference.engine import RCAInferenceEngine
 from src.ingestion.schemas import (
@@ -151,6 +154,7 @@ async def health_check(request: Request) -> dict:
 async def predict_rca(
     request: Request,
     payload: PipelineFailurePredictionRequest,
+    db: Session = Depends(get_db),
 ) -> RCAPredictionResponse:
     """
     Predict the root cause of a pipeline failure.
@@ -177,6 +181,38 @@ async def predict_rca(
     except Exception as e:
         logger.exception("Inference failed for pipeline %s: %s", payload.pipeline_name, e)
         raise HTTPException(status_code=500, detail=f"Inference failed: {e}")
+
+    # Store failure + prediction in DB (best-effort — don't block the response)
+    db_available = getattr(request.app.state, "db_available", False)
+    if db_available:
+        try:
+            event_timestamp = payload.timestamp or datetime.now(timezone.utc)
+            failure = create_pipeline_failure(
+                db=db,
+                pipeline_name=payload.pipeline_name,
+                task_name=payload.task_name,
+                runtime=payload.runtime,
+                retry_count=payload.retry_count,
+                rows_processed=payload.rows_processed,
+                schema_change=payload.schema_change,
+                upstream_failed=payload.upstream_failed,
+                error_log=payload.error_log,
+                event_timestamp=event_timestamp,
+            )
+            create_rca_prediction(
+                db=db,
+                failure_id=failure.id,
+                pipeline_name=result["pipeline_name"],
+                predicted_root_cause=result["predicted_root_cause"],
+                confidence=result["confidence"],
+                evidence=result["evidence"],
+                model_version=result["model_version"],
+            )
+            db.commit()
+            logger.info("Prediction stored in database (failure_id=%s)", failure.id)
+        except Exception as e:
+            db.rollback()
+            logger.warning("Failed to store prediction in database: %s", e)
 
     response = RCAPredictionResponse(
         pipeline_name=result["pipeline_name"],
