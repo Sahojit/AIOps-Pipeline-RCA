@@ -18,6 +18,7 @@ Production:
 """
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, HTTPException, Request
@@ -25,6 +26,10 @@ from fastapi.responses import JSONResponse
 
 from src.config.settings import settings
 from src.inference.engine import RCAInferenceEngine
+from src.ingestion.schemas import (
+    PipelineFailurePredictionRequest,
+    RCAPredictionResponse,
+)
 from src.utils.logger import configure_root_logger, get_logger
 
 logger = get_logger(__name__)
@@ -140,3 +145,50 @@ async def health_check(request: Request) -> dict:
             detail="Model not loaded",
         )
     return engine.health_check()
+
+
+@app.post("/predict-rca", response_model=RCAPredictionResponse)
+async def predict_rca(
+    request: Request,
+    payload: PipelineFailurePredictionRequest,
+) -> RCAPredictionResponse:
+    """
+    Predict the root cause of a pipeline failure.
+
+    Called by Airflow's on_failure_callback or any monitoring system
+    that detects a pipeline failure. Returns the predicted root cause,
+    confidence score, and SHAP-derived evidence.
+    """
+    engine = _get_engine(request)
+
+    logger.info(
+        "Received prediction request: pipeline=%s task=%s",
+        payload.pipeline_name, payload.task_name,
+    )
+
+    event_dict = payload.model_dump()
+    if event_dict.get("timestamp"):
+        event_dict["timestamp"] = event_dict["timestamp"].isoformat()
+    else:
+        event_dict["timestamp"] = datetime.now(timezone.utc).isoformat()
+
+    try:
+        result = engine.predict(event_dict)
+    except Exception as e:
+        logger.exception("Inference failed for pipeline %s: %s", payload.pipeline_name, e)
+        raise HTTPException(status_code=500, detail=f"Inference failed: {e}")
+
+    response = RCAPredictionResponse(
+        pipeline_name=result["pipeline_name"],
+        predicted_root_cause=result["predicted_root_cause"],
+        confidence=result["confidence"],
+        evidence=result["evidence"],
+        model_version=result["model_version"],
+        timestamp=datetime.now(timezone.utc),
+    )
+
+    logger.info(
+        "Prediction complete: pipeline=%s root_cause=%s confidence=%.4f",
+        response.pipeline_name, response.predicted_root_cause, response.confidence,
+    )
+    return response
