@@ -19,13 +19,19 @@ Production:
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from database.crud import create_pipeline_failure, create_rca_prediction
+from database.crud import (
+    create_pipeline_failure,
+    create_rca_prediction,
+    get_prediction_stats,
+    get_recent_predictions,
+    get_root_cause_distribution,
+)
 from database.session import get_db
 from src.config.settings import settings
 from src.inference.engine import RCAInferenceEngine
@@ -309,3 +315,58 @@ async def predict_rca_batch(
 
     logger.info("Batch prediction complete: %d items", len(responses))
     return responses
+
+
+# ---------------------------------------------------------------------------
+# Query Endpoints — used by dashboard and monitoring
+# ---------------------------------------------------------------------------
+
+@app.get("/predictions")
+async def list_predictions(
+    limit: int = 50,
+    pipeline_name: str | None = None,
+    root_cause: str | None = None,
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+    """List recent predictions with optional filters."""
+    predictions = get_recent_predictions(
+        db, limit=limit, pipeline_name=pipeline_name, root_cause=root_cause,
+    )
+    return [
+        {
+            "id": str(p.id),
+            "pipeline_name": p.pipeline_name,
+            "predicted_root_cause": p.predicted_root_cause,
+            "confidence": p.confidence,
+            "evidence": p.evidence,
+            "model_version": p.model_version,
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        }
+        for p in predictions
+    ]
+
+
+@app.get("/stats")
+async def prediction_stats(
+    days: int = 30,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Aggregate prediction statistics for the dashboard."""
+    stats = get_prediction_stats(db, days=days)
+    if stats["total_predictions"] == 0:
+        return {
+            "total_predictions": 0,
+            "avg_confidence": 0.0,
+            "most_common_root_cause": None,
+            "period_days": days,
+        }
+    return stats
+
+
+@app.get("/root-cause-distribution")
+async def root_cause_distribution(
+    days: int = 30,
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+    """Root cause distribution for pie/bar charts in the dashboard."""
+    return get_root_cause_distribution(db, days=days)
