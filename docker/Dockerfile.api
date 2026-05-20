@@ -1,0 +1,57 @@
+# =============================================================================
+# docker/Dockerfile.api
+# =============================================================================
+# Builds the RCA API service (FastAPI + uvicorn).
+#
+# Build:
+#   docker build -f docker/Dockerfile.api -t sahojit/rca-api .
+#
+# Run standalone:
+#   docker run -p 8000:8000 \
+#     -e DATABASE_URL=postgresql://rca_user:rca_pass@host.docker.internal:5432/rca_db \
+#     -v $(pwd)/models:/app/models \
+#     sahojit/rca-api
+# =============================================================================
+
+FROM python:3.11-slim
+
+# --- System dependencies ---
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libpq-dev \
+        gcc \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- Working directory ---
+WORKDIR /app
+
+# --- Install Python dependencies (cached layer) ---
+COPY docker/requirements-api.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# --- Copy application code ---
+COPY src/ /app/src/
+COPY api/ /app/api/
+COPY database/ /app/database/
+COPY .env.example /app/.env
+
+# --- Create directories for mounted volumes ---
+RUN mkdir -p /app/models /app/data
+
+# --- Environment defaults (overridden by docker-compose) ---
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    ENVIRONMENT=production \
+    LOG_LEVEL=INFO \
+    API_HOST=0.0.0.0 \
+    API_PORT=8000
+
+EXPOSE 8000
+
+# --- Health check ---
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# --- Entrypoint ---
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
