@@ -1,0 +1,23 @@
+# =============================================================================
+# Production dependencies for the Streamlit dashboard service
+# =============================================================================
+
+# --- Dashboard ---
+streamlit==1.35.0
+plotly==5.22.0
+
+# --- Data ---
+pandas==2.2.2
+numpy==1.26.4
+
+# --- Graph Analysis (for dependency graph viz) ---
+networkx==3.3
+scipy>=1.13.0
+
+# --- HTTP Client (calls RCA API) ---
+requests==2.32.2
+
+# --- Configuration (imports src.config.settings) ---
+pydantic==2.7.1
+pydantic-settings==2.2.1
+python-dotenv==1.0.1
