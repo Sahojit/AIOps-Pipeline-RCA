@@ -228,3 +228,84 @@ async def predict_rca(
         response.pipeline_name, response.predicted_root_cause, response.confidence,
     )
     return response
+
+
+@app.post("/predict-rca/batch")
+async def predict_rca_batch(
+    request: Request,
+    payloads: list[PipelineFailurePredictionRequest],
+    db: Session = Depends(get_db),
+) -> list[RCAPredictionResponse]:
+    """
+    Batch prediction — diagnose multiple failures at once.
+    Limited to 50 items per batch to prevent request timeouts.
+    """
+    if not payloads:
+        return []
+
+    if len(payloads) > 50:
+        raise HTTPException(
+            status_code=400,
+            detail="Batch size limited to 50 items. Split into multiple requests.",
+        )
+
+    engine = _get_engine(request)
+    db_available = getattr(request.app.state, "db_available", False)
+    logger.info("Batch prediction request: %d items", len(payloads))
+
+    responses: list[RCAPredictionResponse] = []
+    for payload in payloads:
+        event_dict = payload.model_dump()
+        event_timestamp = payload.timestamp or datetime.now(timezone.utc)
+        if event_dict.get("timestamp"):
+            event_dict["timestamp"] = event_dict["timestamp"].isoformat()
+        else:
+            event_dict["timestamp"] = datetime.now(timezone.utc).isoformat()
+
+        result = engine.predict(event_dict)
+
+        if db_available:
+            try:
+                failure = create_pipeline_failure(
+                    db=db,
+                    pipeline_name=payload.pipeline_name,
+                    task_name=payload.task_name,
+                    runtime=payload.runtime,
+                    retry_count=payload.retry_count,
+                    rows_processed=payload.rows_processed,
+                    schema_change=payload.schema_change,
+                    upstream_failed=payload.upstream_failed,
+                    error_log=payload.error_log,
+                    event_timestamp=event_timestamp,
+                )
+                create_rca_prediction(
+                    db=db,
+                    failure_id=failure.id,
+                    pipeline_name=result["pipeline_name"],
+                    predicted_root_cause=result["predicted_root_cause"],
+                    confidence=result["confidence"],
+                    evidence=result["evidence"],
+                    model_version=result["model_version"],
+                )
+            except Exception as e:
+                db.rollback()
+                logger.warning("Failed to store batch item in database: %s", e)
+
+        responses.append(RCAPredictionResponse(
+            pipeline_name=result["pipeline_name"],
+            predicted_root_cause=result["predicted_root_cause"],
+            confidence=result["confidence"],
+            evidence=result["evidence"],
+            model_version=result["model_version"],
+            timestamp=datetime.now(timezone.utc),
+        ))
+
+    if db_available:
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.warning("Failed to commit batch predictions: %s", e)
+
+    logger.info("Batch prediction complete: %d items", len(responses))
+    return responses
