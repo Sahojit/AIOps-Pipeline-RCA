@@ -321,6 +321,18 @@ async def predict_rca_batch(
 # Query Endpoints — used by dashboard and monitoring
 # ---------------------------------------------------------------------------
 
+@app.get("/model-info")
+async def model_info(request: Request) -> dict[str, Any]:
+    """Returns metadata about the currently loaded model."""
+    engine = _get_engine(request)
+    return {
+        "model_version": engine.model_version,
+        "classes": engine.class_names,
+        "n_classes": len(engine.class_names),
+        "status": "serving",
+    }
+
+
 @app.get("/predictions")
 async def list_predictions(
     limit: int = 50,
