@@ -1,0 +1,54 @@
+# =============================================================================
+# docker/Dockerfile.dashboard
+# =============================================================================
+# Builds the Streamlit monitoring dashboard.
+#
+# Build:
+#   docker build -f docker/Dockerfile.dashboard -t sahojit/rca-dashboard .
+#
+# Run standalone:
+#   docker run -p 8501:8501 \
+#     -e RCA_API_URL=http://host.docker.internal:8000 \
+#     sahojit/rca-dashboard
+# =============================================================================
+
+FROM python:3.11-slim
+
+# --- System dependencies ---
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- Working directory ---
+WORKDIR /app
+
+# --- Install Python dependencies (cached layer) ---
+COPY docker/requirements-dashboard.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# --- Copy application code ---
+# Dashboard needs: dashboard/, src/graph/, src/utils/, src/config/
+COPY dashboard/ /app/dashboard/
+COPY src/__init__.py /app/src/__init__.py
+COPY src/config/ /app/src/config/
+COPY src/utils/ /app/src/utils/
+COPY src/graph/ /app/src/graph/
+COPY .env.example /app/.env
+
+# --- Environment defaults ---
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    RCA_API_URL=http://rca-api:8000
+
+EXPOSE 8501
+
+# --- Health check ---
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+# --- Entrypoint ---
+CMD ["streamlit", "run", "dashboard/app.py", \
+     "--server.port=8501", \
+     "--server.headless=true", \
+     "--server.address=0.0.0.0"]
