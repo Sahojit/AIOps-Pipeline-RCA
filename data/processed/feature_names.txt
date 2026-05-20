@@ -1,0 +1,96 @@
+feat_runtime
+feat_retry_count
+feat_rows_processed
+feat_log_rows_processed
+feat_log_runtime
+feat_rows_per_second
+feat_zero_rows
+feat_short_runtime
+feat_long_runtime
+feat_high_retries
+feat_schema_change
+feat_upstream_failed
+feat_schema_and_upstream
+feat_schema_no_upstream
+feat_upstream_no_schema
+feat_hour
+feat_day_of_week
+feat_is_weekend
+feat_is_business_hours
+feat_hour_sin
+feat_hour_cos
+feat_dow_sin
+feat_dow_cos
+feat_day_of_month
+has_error_type
+error_type_hash
+has_http_error
+http_status_code
+is_client_error
+is_server_error
+has_file_path
+has_s3_path
+has_memory_ref
+memory_value_mb
+has_timeout
+timeout_seconds
+column_count
+numeric_count_in_log
+log_length
+word_count
+keyword_score_schema
+keyword_score_resource
+keyword_score_api
+keyword_score_data_quality
+keyword_score_dependency
+keyword_score_missing_data
+tfidf_10
+tfidf_10 13
+tfidf_10 64
+tfidf_13
+tfidf_64
+tfidf_64 NUM_TOKEN
+tfidf_NUMERIC_TOKEN
+tfidf_NUM_TOKEN
+tfidf_NUM_TOKEN port
+tfidf_NUM_TOKEN ssh2
+tfidf_component
+tfidf_component httpkernel
+tfidf_context
+tfidf_event
+tfidf_event kernelevent
+tfidf_failed
+tfidf_failed password
+tfidf_fatal
+tfidf_fatal signalexception
+tfidf_for
+tfidf_for root
+tfidf_from
+tfidf_from 10
+tfidf_httpkernel
+tfidf_httpkernel event
+tfidf_ip
+tfidf_ip 10
+tfidf_is
+tfidf_ismasterrequest
+tfidf_ismasterrequest is
+tfidf_kernelevent
+tfidf_kernelevent ismasterrequest
+tfidf_limit
+tfidf_not
+tfidf_on
+tfidf_password
+tfidf_password for
+tfidf_port
+tfidf_port NUM_TOKEN
+tfidf_root
+tfidf_root from
+tfidf_signalexception
+tfidf_signalexception sigterm
+tfidf_sigterm
+tfidf_ssh2
+tfidf_stderr
+tfidf_stderr failed
+tfidf_symfony
+tfidf_symfony component
+tfidf_to
